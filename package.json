@@ -1,0 +1,27 @@
+{
+  "name": "kommo-ghl-sync",
+  "version": "1.0.0",
+  "description": "Sincronizador bidireccional por API entre Kommo CRM y GoHighLevel (GHL)",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test:sync": "node scripts/test-contact.js"
+  },
+  "keywords": [
+    "kommo",
+    "gohighlevel",
+    "ghl",
+    "crm",
+    "sync",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

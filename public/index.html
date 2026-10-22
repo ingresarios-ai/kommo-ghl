@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kommo CRM ↔ GoHighLevel (GHL) Bridge</title>
+  
+  <!-- Tipografías Modernas -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="brand-area">
+        <div class="brand-badges">
+          <span class="logo-badge kommo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            KOMMO
+          </span>
+          <span class="logo-badge-divider">⇄</span>
+          <span class="logo-badge ghl">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            GHL
+          </span>
+        </div>
+        <div class="brand-title">
+          <h1>Sincronizador API Kommo ↔ GoHighLevel</h1>
+          <p>Enriquecimiento automático de leads por número telefónico</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div class="server-badge" id="serverStatusBadge">
+          <span class="pulse-dot"></span>
+          <span>Servidor Activo (Puerto <span id="serverPort">3000</span>)</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- NAVEGACIÓN POR PESTAÑAS -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-dashboard" id="btnTabDashboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        Panel & Monitor
+      </button>
+
+      <button class="tab-btn" data-tab="tab-simulator" id="btnTabSimulator">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14"></path>
+          <path d="M12 5l7 7-7 7"></path>
+        </svg>
+        Simulador de Prueba
+      </button>
+
+      <button class="tab-btn" data-tab="tab-config" id="btnTabConfig">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        Credenciales (.env)
+      </button>
+
+      <button class="tab-btn" data-tab="tab-guide" id="btnTabGuide">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
+        Guía de Integración
+      </button>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- TAB 1: DASHBOARD & MONITOR                 -->
+    <!-- ========================================== -->
+    <section id="tab-dashboard" class="tab-content active">
+      
+      <!-- Estado de Conexiones -->
+      <div class="connections-banner">
+        <!-- Tarjeta Kommo -->
+        <div class="connection-card">
+          <div class="conn-left">
+            <div class="conn-icon kommo">K</div>
+            <div class="conn-details">
+              <h4>Kommo CRM (API v4)</h4>
+              <p id="kommoSubdomainLabel">Subdominio: <em>No configurado</em></p>
+              <div style="margin-top: 6px;">
+                <span class="conn-badge disconnected" id="kommoStatusBadge">Sin verificar</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn-test-conn" id="btnTestKommo">
+            <span>Probar API</span>
+          </button>
+        </div>
+
+        <!-- Tarjeta GoHighLevel -->
+        <div class="connection-card">
+          <div class="conn-left">
+            <div class="conn-icon ghl">G</div>
+            <div class="conn-details">
+              <h4>GoHighLevel (API v2)</h4>
+              <p id="ghlLocationLabel">Location: <em>No configurado</em></p>
+              <div style="margin-top: 6px;">
+                <span class="conn-badge disconnected" id="ghlStatusBadge">Sin verificar</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn-test-conn" id="btnTestGhl">
+            <span>Probar API</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Métricas -->
+      <div class="stats-grid">
+        <div class="stat-card primary">
+          <div class="stat-header">
+            <span>TOTAL EVENTOS</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-sub">Peticiones procesadas</div>
+        </div>
+
+        <div class="stat-card success">
+          <div class="stat-header">
+            <span>ENCONTRADOS EN GHL</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          </div>
+          <div class="stat-value" id="statSuccess">0</div>
+          <div class="stat-sub">Enriquecidos en Kommo</div>
+        </div>
+
+        <div class="stat-card warning">
+          <div class="stat-header">
+            <span>NO REGISTRADOS EN GHL</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="stat-value" id="statNotFound">0</div>
+          <div class="stat-sub">Teléfono nuevo en GHL</div>
+        </div>
+
+        <div class="stat-card error">
+          <div class="stat-header">
+            <span>ERRORES / SIN TELÉFONO</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <div class="stat-value" id="statErrors">0</div>
+          <div class="stat-sub">Requieren atención</div>
+        </div>
+      </div>
+
+      <!-- Modo Polling Automático por API (Cero Webhooks) -->
+      <div class="glass-panel" style="border: 1px solid rgba(99, 102, 241, 0.35); background: rgba(17, 24, 39, 0.85); box-shadow: 0 0 25px rgba(99, 102, 241, 0.15);">
+        <div class="panel-header" style="margin-bottom: 12px;">
+          <div>
+            <h3>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="2"></circle>
+                <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+              </svg>
+              Sondeo Automático por API (Cero Webhooks, Cero URLs públicas)
+            </h3>
+            <p class="panel-subtitle">Consulta la API de Kommo cada 10 segundos buscando nuevos leads y los enriquece con datos de GHL.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="conn-badge disconnected" id="pollingStatusBadge">Inactivo</span>
+            <button class="btn btn-primary" id="btnTogglePolling" style="padding: 8px 16px; font-size: 0.85rem;">
+              <span>Activar Monitoreo (10s)</span>
+            </button>
+          </div>
+        </div>
+        <div style="font-size: 0.82rem; color: var(--text-secondary); display: flex; gap: 24px; flex-wrap: wrap; background: rgba(0,0,0,0.2); padding: 8px 14px; border-radius: var(--radius-sm);">
+          <span>Última consulta: <strong id="pollingLastTime" style="color: var(--text-primary); font-family: var(--font-mono);">Nunca</strong></span>
+          <span>Detalle: <strong id="pollingCycleStatus" style="color: var(--text-primary);">Pausado</strong></span>
+          <span>Contactos procesados: <strong id="pollingCount" style="color: var(--accent-kommo-light); font-family: var(--font-mono);">0</strong></span>
+        </div>
+      </div>
+
+      <!-- URL del Webhook para Kommo (Alternativa para Producción / Vercel / Nube) -->
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div>
+            <h3>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              URL del Webhook (Para Producción en la Nube / Vercel / Render)
+            </h3>
+            <p class="panel-subtitle">Úsalo cuando subas el proyecto a la nube o si utilizas un túnel público</p>
+          </div>
+        </div>
+
+
+        <div class="webhook-box">
+          <span class="webhook-url-text" id="webhookDisplayUrl">http://localhost:3000/webhook/kommo-lead</span>
+          <button class="btn-copy" id="btnCopyWebhook">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copiar URL
+          </button>
+        </div>
+      </div>
+
+      <!-- Feed de Sincronizaciones Recientes -->
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div>
+            <h3>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Historial de Sincronizaciones en Vivo
+            </h3>
+            <p class="panel-subtitle">Eventos procesados en tiempo real (actualización automática)</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" id="btnRefreshHistory" style="padding: 6px 12px; font-size: 0.8rem;">
+              Actualizar
+            </button>
+            <button class="btn btn-danger" id="btnClearHistory" style="padding: 6px 12px; font-size: 0.8rem;">
+              Limpiar
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Contacto Kommo</th>
+                <th>Teléfono</th>
+                <th>Estado GHL</th>
+                <th>Datos Enriquecidos</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                  No hay sincronizaciones registradas aún. Ejecuta una en la pestaña <strong>Simulador</strong> o envía un lead en Kommo.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: SIMULADOR DE PRUEBAS                -->
+    <!-- ========================================== -->
+    <section id="tab-simulator" class="tab-content">
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div>
+            <h3>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Laboratorio de Pruebas de Sincronización
+            </h3>
+            <p class="panel-subtitle">Prueba el flujo completo con un contacto existente en Kommo o ingresando un teléfono directamente</p>
+          </div>
+        </div>
+
+        <form id="simulatorForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="simContactId">ID de Contacto en Kommo</label>
+              <input type="text" id="simContactId" class="form-input mono" placeholder="Ej: 24598123">
+              <span class="input-hint">El ID numérico del contacto en la URL de Kommo</span>
+            </div>
+
+            <div class="form-group">
+              <label for="simLeadId">O ID de Lead en Kommo (Opcional)</label>
+              <input type="text" id="simLeadId" class="form-input mono" placeholder="Ej: 1489201">
+              <span class="input-hint">Si dejas vacío el contacto, buscará el contacto dentro de este lead</span>
+            </div>
+
+            <div class="form-group">
+              <label for="simPhone">O Teléfono Directo (Para probar sin ID)</label>
+              <input type="text" id="simPhone" class="form-input mono" placeholder="Ej: +52 1 55 1234 5678">
+              <span class="input-hint">Formato con o sin código de país</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <button type="submit" class="btn btn-primary" id="btnRunSimulator">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              <span>Ejecutar Sincronización Ahora</span>
+            </button>
+            <span id="simulatorStatus" style="font-size: 0.85rem; color: var(--text-secondary);"></span>
+          </div>
+        </form>
+
+        <!-- Pipeline visual de pasos -->
+        <div id="simulatorPipelineContainer" style="display: none; margin-top: 28px;">
+          <h4 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+            Flujo de Ejecución Paso a Paso:
+          </h4>
+          <div class="pipeline-steps" id="pipelineSteps"></div>
+
+          <!-- Inspector JSON -->
+          <div style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">RESPUESTA CRUDA DE LAS APIS:</span>
+            </div>
+            <pre class="code-inspector" id="simulatorRawJson">// Aquí se mostrará la respuesta completa</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: CONFIGURACIÓN DE CREDENCIALES       -->
+    <!-- ========================================== -->
+    <section id="tab-config" class="tab-content">
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div>
+            <h3>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Configuración de Credenciales (.env)
+            </h3>
+            <p class="panel-subtitle">Puedes guardar o actualizar tus credenciales directamente aquí sin abrir la terminal</p>
+          </div>
+        </div>
+
+        <form id="configForm">
+          <h4 style="color: var(--accent-kommo-light); font-size: 0.95rem; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+            1. Conexión Kommo CRM
+          </h4>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="cfgKommoSubdomain">Subdominio de Kommo</label>
+              <div class="input-wrapper">
+                <input type="text" id="cfgKommoSubdomain" class="form-input mono" placeholder="tuempresa">
+              </div>
+              <span class="input-hint">Ejemplo: si entras a <code>tuempresa.kommo.com</code>, coloca solo <code>tuempresa</code></span>
+            </div>
+
+            <div class="form-group">
+              <label for="cfgKommoToken">Token de Larga Duración (Kommo API v4)</label>
+              <div class="input-wrapper">
+                <input type="password" id="cfgKommoToken" class="form-input mono" placeholder="Pega el token aquí">
+                <button type="button" class="btn-input-action" data-toggle="cfgKommoToken" title="Mostrar/Ocultar">
+                  👁️
+                </button>
+              </div>
+              <span class="input-hint">Kommo → Ajustes → Integraciones → Crear integración privada</span>
+            </div>
+          </div>
+
+          <h4 style="color: var(--accent-ghl-light); font-size: 0.95rem; margin: 24px 0 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+            2. Conexión GoHighLevel (GHL API v2)
+          </h4>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="cfgGhlLocationId">Location ID (Subcuenta GHL)</label>
+              <div class="input-wrapper">
+                <input type="text" id="cfgGhlLocationId" class="form-input mono" placeholder="Ej: v9QO3d2j81L0kZmY...">
+              </div>
+              <span class="input-hint">GHL → Settings → Business Info → Location ID</span>
+            </div>
+
+            <div class="form-group">
+              <label for="cfgGhlToken">Token de Integración Privada (GHL API v2)</label>
+              <div class="input-wrapper">
+                <input type="password" id="cfgGhlToken" class="form-input mono" placeholder="Pega el Bearer token de GHL aquí">
+                <button type="button" class="btn-input-action" data-toggle="cfgGhlToken" title="Mostrar/Ocultar">
+                  👁️
+                </button>
+              </div>
+              <span class="input-hint">GHL → Settings → Developers → Private Integrations (con permisos de contacts)</span>
+            </div>
+          </div>
+
+          <h4 style="color: var(--text-secondary); font-size: 0.95rem; margin: 24px 0 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+            3. Seguridad Opcional
+          </h4>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="cfgWebhookSecret">Clave Secreta para Webhook (Opcional)</label>
+              <input type="text" id="cfgWebhookSecret" class="form-input mono" placeholder="Dejar vacío si no se requiere">
+              <span class="input-hint">Protege tu endpoint exigiendo <code>?secret=tu_clave</code></span>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; display: flex; gap: 12px;">
+            <button type="submit" class="btn btn-primary" id="btnSaveConfig">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              <span>Guardar en archivo .env</span>
+            </button>
+            <button type="button" class="btn btn-secondary" id="btnReloadConfig">
+              Recargar Valores
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: GUÍA DE CONFIGURACIÓN               -->
+    <!-- ========================================== -->
+    <section id="tab-guide" class="tab-content">
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div>
+            <h3>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              Cómo conectar el Webhook en Kommo CRM
+            </h3>
+            <p class="panel-subtitle">Sigue estos sencillos pasos para que Kommo dispare la sincronización automáticamente cada vez que un lead escriba</p>
+          </div>
+        </div>
+
+        <!-- Paso 1 -->
+        <div class="guide-step">
+          <div class="guide-step-number">1</div>
+          <div class="guide-step-body">
+            <h4>Método Recomendado: Desde el Salesbot / Embudo Digital</h4>
+            <p>
+              En Kommo, ve a tu <strong>Embudo de Ventas (Digital Pipeline)</strong> y abre el <strong>Salesbot</strong> o agrega una acción de tipo <strong>Webhook</strong> en la etapa inicial ("Primer Contacto" o "Entrantes").
+            </p>
+            <div class="code-snippet">
+              <span>URL: <span id="guideWebhookUrl">http://tu-servidor.com/webhook/kommo-lead</span></span>
+              <span>Método: POST</span>
+            </div>
+            <p style="margin-top: 8px;">
+              En los parámetros o cuerpo JSON puedes enviar:
+            </p>
+            <div class="code-snippet">
+              { "contact_id": "{{contact.id}}" }
+            </div>
+          </div>
+        </div>
+
+        <!-- Paso 2 -->
+        <div class="guide-step">
+          <div class="guide-step-number">2</div>
+          <div class="guide-step-body">
+            <h4>Método Alternativo: Webhook Global de la Cuenta</h4>
+            <p>
+              1. En Kommo ve a <strong>Ajustes</strong> → <strong>Integraciones</strong> → pestaña <strong>Webhooks</strong>.<br>
+              2. Haz clic en <strong>Añadir Webhook</strong>.<br>
+              3. Pega la URL del Webhook y selecciona el evento: <strong>Contacto añadido</strong> o <strong>Lead añadido</strong>.<br>
+              4. Guarda los cambios. Nuestro servidor soporta de forma nativa el formato codificado en formulario (URL-encoded) que envía Kommo.
+            </p>
+          </div>
+        </div>
+
+        <!-- Paso 3 -->
+        <div class="guide-step">
+          <div class="guide-step-number">3</div>
+          <div class="guide-step-body">
+            <h4>¿Qué sucede cuando se ejecuta?</h4>
+            <p>
+              1. Nuestro microservicio recibe el ID de inmediato y responde con HTTP 200 para evitar que Kommo cancele la petición por timeout.<br>
+              2. El servicio consulta la API de Kommo, extrae el número telefónico y genera variantes internacionales (+52, sin +, etc.).<br>
+              3. Hace la búsqueda en GoHighLevel por teléfono.<br>
+              4. Si el contacto existe en GHL, actualiza en Kommo su <strong>Nombre</strong>, <strong>Email</strong> y <strong>Etiquetas (Tags)</strong>.<br>
+              5. Inserta una <strong>nota de confirmación</strong> en el feed de actividades del contacto en Kommo para que tus vendedores sepan que fue enriquecido desde GHL.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- MODAL PARA VER DETALLE DE UN EVENTO -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem;" id="modalTitle">Detalle de Sincronización</h3>
+        <button id="modalCloseBtn" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.3rem;">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Contenido dinámico -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modalCloseBtnFooter">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- SCRIPT CLIENTE -->
+  <script src="/app.js"></script>
+</body>
+</html>
