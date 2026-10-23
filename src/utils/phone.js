@@ -49,15 +49,25 @@ export function getPhoneSearchVariants(phone) {
   }
 
   // Caso especial México: WhatsApp agrega un '1' después de '+52' (+52 1 55... -> +52155...)
-  // Mientras que muchos CRMs en GHL guardan directamente +5255...
+  // Mientras que muchos CRMs en GHL guardan directamente +5255... o el número local de 10 dígitos (ej: 5554589524)
   if (withPlus.startsWith('+521') && withPlus.length === 14) {
     const mxWithoutOne = `+52${withPlus.slice(4)}`;
+    const mxNational = withPlus.slice(4); // 10 dígitos: 5554589524
     variants.add(mxWithoutOne);
     variants.add(mxWithoutOne.replace(/^\+/, ''));
+    variants.add(mxNational);
   } else if (withPlus.startsWith('+52') && !withPlus.startsWith('+521') && withPlus.length === 13) {
     const mxWithOne = `+521${withPlus.slice(3)}`;
+    const mxNational = withPlus.slice(3); // 10 dígitos: 5554589524
     variants.add(mxWithOne);
     variants.add(mxWithOne.replace(/^\+/, ''));
+    variants.add(mxNational);
+  } else if (withoutPlus.length === 10 && withoutPlus.startsWith('55')) {
+    // Si viene solo 10 dígitos (CDMX / México)
+    variants.add(`+52${withoutPlus}`);
+    variants.add(`52${withoutPlus}`);
+    variants.add(`+521${withoutPlus}`);
+    variants.add(`521${withoutPlus}`);
   }
 
   return Array.from(variants);
