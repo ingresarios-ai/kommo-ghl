@@ -45,8 +45,12 @@
           <span class="pulse-dot"></span>
           <span>Servidor Activo (Puerto <span id="serverPort">3000</span>)</span>
         </div>
+        <button id="btnLogout" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; display: none;">
+          🔒 Salir
+        </button>
       </div>
     </header>
+
 
     <!-- NAVEGACIÓN POR PESTAÑAS -->
     <nav class="nav-tabs" role="tablist">
@@ -533,8 +537,33 @@
     </div>
   </div>
 
+  <!-- PANTALLA DE BLOQUEO POR CONTRASEÑA -->
+  <div class="login-overlay" id="loginOverlay" style="display: none;">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-badges" style="margin-bottom: 16px; justify-content: center;">
+          <span class="logo-badge kommo">KOMMO</span>
+          <span class="logo-badge-divider">⇄</span>
+          <span class="logo-badge ghl">GHL</span>
+        </div>
+        <h2>Panel Protegido</h2>
+        <p>Ingresa la contraseña del panel para acceder a la administración</p>
+      </div>
+      <form id="loginForm">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <input type="password" id="loginPasswordInput" class="form-input" placeholder="Contraseña de acceso" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;" id="btnLoginSubmit">
+          Ingresar al Panel
+        </button>
+        <p id="loginErrorMsg" style="color: var(--status-error); font-size: 0.82rem; margin-top: 12px; display: none; text-align: center;"></p>
+      </form>
+    </div>
+  </div>
+
   <!-- TOAST CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
+
 
   <!-- SCRIPT CLIENTE -->
   <script src="/app.js"></script>

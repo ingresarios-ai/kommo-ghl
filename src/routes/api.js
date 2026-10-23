@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { getSafeConfig, saveConfigToEnv, reloadConfig } from '../config.js';
+import { config, getSafeConfig, saveConfigToEnv, reloadConfig } from '../config.js';
+
 import * as kommoService from '../services/kommo.js';
 import * as ghlService from '../services/ghl.js';
 import { syncKommoContactWithGHL } from '../services/sync.js';
@@ -7,6 +8,48 @@ import { getSyncHistory, getSyncStats, clearSyncHistory } from '../services/hist
 import { startPolling, stopPolling, getPollingStatus } from '../services/polling.js';
 
 export const apiRouter = Router();
+
+// ==========================================
+// AUTENTICACIÓN DEL PANEL
+// ==========================================
+apiRouter.post('/auth/login', (req, res) => {
+  reloadConfig();
+  const { password } = req.body || {};
+  if (!config.dashboardPassword) {
+    return res.json({ success: true, token: 'no_password_required' });
+  }
+  if (password === config.dashboardPassword) {
+    const token = Buffer.from(config.dashboardPassword).toString('base64');
+    return res.json({ success: true, token });
+  }
+  return res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
+});
+
+apiRouter.get('/auth/check', (req, res) => {
+  reloadConfig();
+  if (!config.dashboardPassword) {
+    return res.json({ protectionEnabled: false, authenticated: true });
+  }
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '') || req.headers['x-dashboard-password'];
+  const expectedToken = Buffer.from(config.dashboardPassword).toString('base64');
+  const isAuthenticated = token === expectedToken || token === config.dashboardPassword;
+  return res.json({ protectionEnabled: true, authenticated: isAuthenticated });
+});
+
+// Middleware de protección para el resto de rutas /api/*
+apiRouter.use((req, res, next) => {
+  if (!config.dashboardPassword) {
+    return next();
+  }
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '') || req.headers['x-dashboard-password'];
+  const expectedToken = Buffer.from(config.dashboardPassword).toString('base64');
+  if (token === expectedToken || token === config.dashboardPassword) {
+    return next();
+  }
+  return res.status(401).json({ error: 'Unauthorized', requireAuth: true, message: 'Se requiere contraseña para acceder al panel' });
+});
 
 // Rutas de Polling (Sondeo Automático por API)
 apiRouter.get('/polling/status', (req, res) => {
@@ -23,6 +66,7 @@ apiRouter.post('/polling/stop', (req, res) => {
   const status = stopPolling();
   res.json({ success: true, status });
 });
+
 
 
 // 1. Obtener configuración actual

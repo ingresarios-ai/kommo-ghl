@@ -2,6 +2,24 @@
  * Cliente JavaScript para la Interfaz de Kommo ↔ GHL Bridge
  */
 
+// Interceptor de Autenticación para fetch
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  const token = localStorage.getItem('dashboard_auth_token');
+  if (typeof url === 'string' && url.startsWith('/api') && token) {
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      ...(options.headers || {})
+    };
+  }
+  return originalFetch(url, options).then(res => {
+    if (res.status === 401 && typeof url === 'string' && !url.includes('/api/auth/login')) {
+      if (window.showLoginOverlay) window.showLoginOverlay();
+    }
+    return res;
+  });
+};
+
 // Estado global de la aplicación
 const state = {
   config: null,
@@ -12,12 +30,21 @@ const state = {
 
 // Elementos DOM
 const dom = {
+  // Auth
+  loginOverlay: document.getElementById('loginOverlay'),
+  loginForm: document.getElementById('loginForm'),
+  loginPasswordInput: document.getElementById('loginPasswordInput'),
+  loginErrorMsg: document.getElementById('loginErrorMsg'),
+  btnLoginSubmit: document.getElementById('btnLoginSubmit'),
+  btnLogout: document.getElementById('btnLogout'),
+
   // Tabs
   tabs: document.querySelectorAll('.tab-btn'),
   tabContents: document.querySelectorAll('.tab-content'),
 
   // Header & Status
   serverPort: document.getElementById('serverPort'),
+
   kommoSubdomainLabel: document.getElementById('kommoSubdomainLabel'),
   kommoStatusBadge: document.getElementById('kommoStatusBadge'),
   ghlLocationLabel: document.getElementById('ghlLocationLabel'),
@@ -601,7 +628,16 @@ function init() {
     });
   });
 
-  // Carga inicial
+  // Auth Listeners
+  if (dom.loginForm) {
+    dom.loginForm.addEventListener('submit', handleLogin);
+  }
+  if (dom.btnLogout) {
+    dom.btnLogout.addEventListener('click', handleLogout);
+  }
+
+  // Carga inicial y chequeo de autenticación
+  checkAuth();
   loadConfig();
   loadHistory();
   loadPollingStatus();
@@ -613,5 +649,86 @@ function init() {
   }, 4000);
 }
 
+// ==========================================
+// FUNCIONES DE AUTENTICACIÓN
+// ==========================================
+window.showLoginOverlay = function() {
+  if (dom.loginOverlay) {
+    dom.loginOverlay.style.display = 'flex';
+    if (dom.loginPasswordInput) dom.loginPasswordInput.focus();
+  }
+};
+
+function hideLoginOverlay() {
+  if (dom.loginOverlay) {
+    dom.loginOverlay.style.display = 'none';
+  }
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/auth/check');
+    const data = await res.json();
+    if (data.protectionEnabled) {
+      if (data.authenticated) {
+        hideLoginOverlay();
+        if (dom.btnLogout) dom.btnLogout.style.display = 'inline-flex';
+      } else {
+        window.showLoginOverlay();
+        if (dom.btnLogout) dom.btnLogout.style.display = 'none';
+      }
+    } else {
+      hideLoginOverlay();
+      if (dom.btnLogout) dom.btnLogout.style.display = 'none';
+    }
+  } catch (e) {
+    // Si falla la red, no bloquear
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const password = dom.loginPasswordInput.value.trim();
+  if (!password) return;
+
+  dom.btnLoginSubmit.disabled = true;
+  dom.btnLoginSubmit.textContent = 'Verificando...';
+  dom.loginErrorMsg.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      localStorage.setItem('dashboard_auth_token', data.token);
+      hideLoginOverlay();
+      if (dom.btnLogout) dom.btnLogout.style.display = 'inline-flex';
+      showToast('¡Acceso concedido al panel!', 'success');
+      loadConfig();
+      loadHistory();
+      loadPollingStatus();
+    } else {
+      dom.loginErrorMsg.textContent = data.error || 'Contraseña incorrecta';
+      dom.loginErrorMsg.style.display = 'block';
+    }
+  } catch (err) {
+    dom.loginErrorMsg.textContent = 'Error de conexión: ' + err.message;
+    dom.loginErrorMsg.style.display = 'block';
+  } finally {
+    dom.btnLoginSubmit.disabled = false;
+    dom.btnLoginSubmit.textContent = 'Ingresar al Panel';
+  }
+}
+
+function handleLogout() {
+  localStorage.removeItem('dashboard_auth_token');
+  window.showLoginOverlay();
+  showToast('Sesión cerrada', 'info');
+}
+
 document.addEventListener('DOMContentLoaded', init);
+
 

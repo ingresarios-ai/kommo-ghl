@@ -878,3 +878,42 @@ body {
   display: flex;
   justify-content: flex-end;
 }
+
+/* Pantalla de Bloqueo por Contraseña */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 13, 20, 0.96);
+  backdrop-filter: blur(16px);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 35px rgba(99, 102, 241, 0.2);
+  text-align: center;
+  animation: modalScale 0.3s ease forwards;
+}
+
+.login-brand h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.login-brand p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+

@@ -28,8 +28,10 @@ export const config = {
     accessToken: (process.env.GHL_ACCESS_TOKEN || '').trim(),
     baseUrl: 'https://services.leadconnectorhq.com'
   },
-  webhookSecret: (process.env.WEBHOOK_SECRET || '').trim()
+  webhookSecret: (process.env.WEBHOOK_SECRET || '').trim(),
+  dashboardPassword: (process.env.DASHBOARD_PASSWORD || '').trim()
 };
+
 
 config.kommo.baseUrl = config.kommo.subdomain ? `https://${config.kommo.subdomain}.kommo.com/api/v4` : '';
 
@@ -53,6 +55,7 @@ export function reloadConfig() {
   config.ghl.accessToken = (process.env.GHL_ACCESS_TOKEN || '').trim();
 
   config.webhookSecret = (process.env.WEBHOOK_SECRET || '').trim();
+  config.dashboardPassword = (process.env.DASHBOARD_PASSWORD || '').trim();
   return config;
 }
 
@@ -92,9 +95,11 @@ export function getSafeConfig() {
     ghlTokenConfigured: Boolean(config.ghl.accessToken),
     ghlTokenMasked: mask(config.ghl.accessToken),
     webhookSecret: config.webhookSecret,
+    isPasswordProtected: Boolean(config.dashboardPassword),
     validation: validateConfig()
   };
 }
+
 
 /**
  * Guarda o actualiza variables en el archivo .env
