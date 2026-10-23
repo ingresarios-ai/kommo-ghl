@@ -44,8 +44,10 @@ app.get('/health', (req, res) => {
 // Rutas API para la UI
 app.use('/api', apiRouter);
 
-// Registrar rutas de webhook
+// Registrar rutas de webhook (soporta tanto /webhook/kommo-lead como /kommo-lead)
+app.use('/webhook', webhookRouter);
 app.use('/', webhookRouter);
+
 
 // Manejador fallback para SPA (si no es API o webhook, entrega index.html)
 app.get('*', (req, res, next) => {
