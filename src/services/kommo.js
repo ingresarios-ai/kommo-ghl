@@ -92,33 +92,70 @@ export async function getUnsorted(uid) {
 
 
 /**
+ * Busca contactos en Kommo por texto o teléfono
+ * @param {string} query
+ * @returns {Promise<Array>}
+ */
+export async function searchContacts(query) {
+  try {
+    const client = getKommoClient();
+    const response = await client.get('/contacts', {
+      params: {
+        query: query,
+        with: 'leads'
+      }
+    });
+    return response.data?._embedded?.contacts || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
  * Extrae los números de teléfono del objeto contacto de Kommo
  * @param {object} contact
  * @returns {string[]}
  */
 export function extractPhonesFromContact(contact) {
-  if (!contact || !Array.isArray(contact.custom_fields_values)) {
-    return [];
-  }
+  if (!contact) return [];
 
   const phones = [];
-  for (const field of contact.custom_fields_values) {
-    // Kommo usa el código de campo 'PHONE' para el teléfono estándar
-    const isPhoneField = 
-      field.field_code === 'PHONE' || 
-      /tel[eé]fono|phone|celular|m[oó]vil|whatsapp/i.test(field.field_name || '');
 
-    if (isPhoneField && Array.isArray(field.values)) {
-      for (const valObj of field.values) {
-        if (valObj && valObj.value) {
-          phones.push(String(valObj.value).trim());
+  // 1. Extraer desde custom_fields_values (campo PHONE estándar de Kommo)
+  if (Array.isArray(contact.custom_fields_values)) {
+    for (const field of contact.custom_fields_values) {
+      const isPhoneField = 
+        field.field_code === 'PHONE' || 
+        /tel[eé]fono|phone|celular|m[oó]vil|whatsapp/i.test(field.field_name || '');
+
+      if (isPhoneField && Array.isArray(field.values)) {
+        for (const valObj of field.values) {
+          if (valObj && valObj.value) {
+            phones.push(String(valObj.value).trim());
+          }
         }
       }
     }
   }
 
-  return phones;
+  // 2. Extraer desde el nombre del contacto (típico cuando WhatsApp crea el contacto con el teléfono como nombre)
+  if (contact.name) {
+    const digits = String(contact.name).replace(/\D/g, '');
+    if (digits.length >= 10) {
+      phones.push(String(contact.name).trim());
+    }
+  }
+
+  if (contact.first_name) {
+    const digits = String(contact.first_name).replace(/\D/g, '');
+    if (digits.length >= 10 && !phones.includes(contact.first_name)) {
+      phones.push(String(contact.first_name).trim());
+    }
+  }
+
+  return Array.from(new Set(phones));
 }
+
 
 /**
  * Actualiza los datos de un contacto en Kommo (Nombre, Email, Etiquetas, etc.)

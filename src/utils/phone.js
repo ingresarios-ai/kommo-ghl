@@ -39,6 +39,15 @@ export function getPhoneSearchVariants(phone) {
   variants.add(withPlus);
   variants.add(withoutPlus);
 
+  // Caso especial Colombia (+57): móviles de 10 dígitos (ej: 300 264 4114)
+  if (withPlus.startsWith('+57') && withPlus.length === 13) {
+    const colLocal = withPlus.slice(3); // 3002644114
+    variants.add(colLocal);
+  } else if (withoutPlus.length === 10 && withoutPlus.startsWith('3')) {
+    variants.add(`+57${withoutPlus}`);
+    variants.add(`57${withoutPlus}`);
+  }
+
   // Caso especial México: WhatsApp agrega un '1' después de '+52' (+52 1 55... -> +52155...)
   // Mientras que muchos CRMs en GHL guardan directamente +5255...
   if (withPlus.startsWith('+521') && withPlus.length === 14) {
@@ -53,3 +62,4 @@ export function getPhoneSearchVariants(phone) {
 
   return Array.from(variants);
 }
+

@@ -69,16 +69,53 @@ export async function syncKommoContactWithGHL({ contactId, leadId, directPhone, 
     let kommoContact = null;
     let phonesToSearch = [];
 
-    if (resolvedContactId) {
-      addStep('Consultar Contacto en Kommo API v4', 'info', `Leyendo datos completos del contacto #${resolvedContactId}`);
-      kommoContact = await kommoService.getContact(resolvedContactId);
-      phonesToSearch = kommoService.extractPhonesFromContact(kommoContact);
-      addStep('Extracción de Teléfonos', 'info', `Detectados ${phonesToSearch.length} número(s)`, { phones: phonesToSearch });
+    // Si el identificador provisto parece un número telefónico (10 o más dígitos como 573002644114)
+    const isDirectPhoneInput = resolvedContactId && String(resolvedContactId).replace(/\D/g, '').length >= 10;
+    if (isDirectPhoneInput) {
+      phonesToSearch.push(String(resolvedContactId).trim());
     }
 
     if (directPhone) {
-      phonesToSearch.unshift(directPhone);
+      phonesToSearch.unshift(String(directPhone).trim());
     }
+
+    if (resolvedContactId) {
+      addStep('Consultar Contacto en Kommo API v4', 'info', `Buscando contacto #${resolvedContactId} en Kommo`);
+      try {
+        kommoContact = await kommoService.getContact(resolvedContactId);
+        const extracted = kommoService.extractPhonesFromContact(kommoContact);
+        phonesToSearch.push(...extracted);
+      } catch (err) {
+        // Si no se encontró por ID directo pero parece un teléfono, buscarlo por query en Kommo
+        if (isDirectPhoneInput) {
+          addStep('Búsqueda por Teléfono en Kommo', 'info', `Buscando contacto en Kommo con teléfono ${resolvedContactId}`);
+          const foundContacts = await kommoService.searchContacts(resolvedContactId);
+          if (foundContacts.length > 0) {
+            kommoContact = foundContacts[0];
+            resolvedContactId = kommoContact.id;
+            const extracted = kommoService.extractPhonesFromContact(kommoContact);
+            phonesToSearch.push(...extracted);
+            addStep('Contacto Encontrado en Kommo', 'success', `Asociado al Contacto #${resolvedContactId}`);
+          }
+        }
+      }
+    }
+
+    // Si tenemos teléfonos pero aún no tenemos resolvedContactId, intentar buscar el contacto en Kommo
+    if (!kommoContact && phonesToSearch.length > 0) {
+      for (const p of phonesToSearch) {
+        const found = await kommoService.searchContacts(p);
+        if (found.length > 0) {
+          kommoContact = found[0];
+          resolvedContactId = kommoContact.id;
+          break;
+        }
+      }
+    }
+
+    // Limpiar teléfonos duplicados
+    phonesToSearch = Array.from(new Set(phonesToSearch.filter(Boolean)));
+    addStep('Extracción de Teléfonos', 'info', `Detectados ${phonesToSearch.length} número(s)`, { phones: phonesToSearch });
 
     if (phonesToSearch.length === 0) {
       addStep('Sin Teléfono Registrado', 'warning', `El contacto #${resolvedContactId} no tiene número telefónico en Kommo.`);
@@ -93,6 +130,7 @@ export async function syncKommoContactWithGHL({ contactId, leadId, directPhone, 
       recordSyncEvent({ ...noPhoneResult, source });
       return noPhoneResult;
     }
+
 
     // 3. Buscar en GoHighLevel por cada teléfono hasta hallar coincidencia
     addStep('Búsqueda en GoHighLevel API v2', 'info', `Buscando coincidencias para: ${phonesToSearch.join(', ')}`);
