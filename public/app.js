@@ -6,13 +6,23 @@
 const originalFetch = window.fetch;
 window.fetch = function(url, options = {}) {
   const token = localStorage.getItem('dashboard_auth_token');
+  const opts = { ...options };
   if (typeof url === 'string' && url.startsWith('/api') && token) {
-    options.headers = {
-      'Authorization': `Bearer ${token}`,
-      ...(options.headers || {})
-    };
+    if (!opts.headers) {
+      opts.headers = {};
+    }
+    if (opts.headers instanceof Headers) {
+      if (!opts.headers.has('Authorization')) {
+        opts.headers.append('Authorization', `Bearer ${token}`);
+      }
+    } else {
+      opts.headers = {
+        'Authorization': `Bearer ${token}`,
+        ...opts.headers
+      };
+    }
   }
-  return originalFetch(url, options).then(res => {
+  return originalFetch(url, opts).then(res => {
     if (res.status === 401 && typeof url === 'string' && !url.includes('/api/auth/login')) {
       if (window.showLoginOverlay) window.showLoginOverlay();
     }
@@ -188,6 +198,18 @@ async function loadConfig() {
     dom.cfgGhlToken.value = data.ghlTokenConfigured ? data.ghlTokenMasked : '';
     dom.cfgWebhookSecret.value = data.webhookSecret || '';
 
+    // Actualizar estado si las credenciales no están configuradas
+    if (!data.kommoTokenConfigured && dom.kommoStatusBadge) {
+      dom.kommoStatusBadge.className = 'conn-badge disconnected';
+      dom.kommoStatusBadge.textContent = 'Token no configurado';
+      localStorage.removeItem('cached_kommo_account');
+    }
+    if (!data.ghlTokenConfigured && dom.ghlStatusBadge) {
+      dom.ghlStatusBadge.className = 'conn-badge disconnected';
+      dom.ghlStatusBadge.textContent = 'Token no configurado';
+      localStorage.removeItem('cached_ghl_location');
+    }
+
   } catch (err) {
     showToast('Error al cargar la configuración: ' + err.message, 'error');
   }
@@ -236,9 +258,18 @@ async function saveConfig(e) {
 }
 
 // Probar conexión con Kommo
-async function testKommoConnection() {
-  dom.btnTestKommo.disabled = true;
-  dom.btnTestKommo.innerHTML = `<span class="spinner"></span> Verificando...`;
+async function testKommoConnection(options = {}) {
+  const isSilent = options.silent === true;
+  if (!isSilent) {
+    dom.btnTestKommo.disabled = true;
+    dom.btnTestKommo.innerHTML = `<span class="spinner"></span> Verificando...`;
+  }
+
+  // Si no está ya conectado, mostrar estado pendiente
+  if (!dom.kommoStatusBadge.classList.contains('connected')) {
+    dom.kommoStatusBadge.className = 'conn-badge pending';
+    dom.kommoStatusBadge.innerHTML = `<span class="spinner-sm"></span> Verificando...`;
+  }
 
   try {
     const res = await fetch('/api/test/kommo', { method: 'POST' });
@@ -247,26 +278,45 @@ async function testKommoConnection() {
     if (data.success) {
       dom.kommoStatusBadge.className = 'conn-badge connected';
       dom.kommoStatusBadge.textContent = `Conectado (${data.accountName})`;
-      showToast(`¡Conexión exitosa con Kommo! Cuenta: ${data.accountName}`, 'success');
+      localStorage.setItem('cached_kommo_account', data.accountName);
+      if (!isSilent) {
+        showToast(`¡Conexión exitosa con Kommo! Cuenta: ${data.accountName}`, 'success');
+      }
     } else {
       dom.kommoStatusBadge.className = 'conn-badge disconnected';
-      dom.kommoStatusBadge.textContent = 'Error de conexión';
-      showToast(data.error || 'Error al conectar con Kommo', 'error');
+      const shortErr = data.status === 401 ? 'Token inválido/expirado' : 'Error de conexión';
+      dom.kommoStatusBadge.textContent = shortErr;
+      localStorage.removeItem('cached_kommo_account');
+      if (!isSilent) {
+        showToast(data.error || 'Error al conectar con Kommo', 'error');
+      }
     }
   } catch (err) {
     dom.kommoStatusBadge.className = 'conn-badge disconnected';
     dom.kommoStatusBadge.textContent = 'Fallo de red';
-    showToast('Fallo al probar Kommo: ' + err.message, 'error');
+    if (!isSilent) {
+      showToast('Fallo al probar Kommo: ' + err.message, 'error');
+    }
   } finally {
-    dom.btnTestKommo.disabled = false;
-    dom.btnTestKommo.innerHTML = `<span>Probar API</span>`;
+    if (!isSilent) {
+      dom.btnTestKommo.disabled = false;
+      dom.btnTestKommo.innerHTML = `<span>Probar API</span>`;
+    }
   }
 }
 
 // Probar conexión con GHL
-async function testGhlConnection() {
-  dom.btnTestGhl.disabled = true;
-  dom.btnTestGhl.innerHTML = `<span class="spinner"></span> Verificando...`;
+async function testGhlConnection(options = {}) {
+  const isSilent = options.silent === true;
+  if (!isSilent) {
+    dom.btnTestGhl.disabled = true;
+    dom.btnTestGhl.innerHTML = `<span class="spinner"></span> Verificando...`;
+  }
+
+  if (!dom.ghlStatusBadge.classList.contains('connected')) {
+    dom.ghlStatusBadge.className = 'conn-badge pending';
+    dom.ghlStatusBadge.innerHTML = `<span class="spinner-sm"></span> Verificando...`;
+  }
 
   try {
     const res = await fetch('/api/test/ghl', { method: 'POST' });
@@ -275,20 +325,36 @@ async function testGhlConnection() {
     if (data.success) {
       dom.ghlStatusBadge.className = 'conn-badge connected';
       dom.ghlStatusBadge.textContent = `Conectado (${data.locationName})`;
-      showToast(`¡Conexión exitosa con GHL! Subcuenta: ${data.locationName}`, 'success');
+      localStorage.setItem('cached_ghl_location', data.locationName);
+      if (!isSilent) {
+        showToast(`¡Conexión exitosa con GHL! Subcuenta: ${data.locationName}`, 'success');
+      }
     } else {
       dom.ghlStatusBadge.className = 'conn-badge disconnected';
-      dom.ghlStatusBadge.textContent = 'Error de conexión';
-      showToast(data.error || 'Error al conectar con GoHighLevel', 'error');
+      const shortErr = data.status === 401 ? 'Token inválido/expirado' : 'Error de conexión';
+      dom.ghlStatusBadge.textContent = shortErr;
+      localStorage.removeItem('cached_ghl_location');
+      if (!isSilent) {
+        showToast(data.error || 'Error al conectar con GoHighLevel', 'error');
+      }
     }
   } catch (err) {
     dom.ghlStatusBadge.className = 'conn-badge disconnected';
     dom.ghlStatusBadge.textContent = 'Fallo de red';
-    showToast('Fallo al probar GHL: ' + err.message, 'error');
+    if (!isSilent) {
+      showToast('Fallo al probar GHL: ' + err.message, 'error');
+    }
   } finally {
-    dom.btnTestGhl.disabled = false;
-    dom.btnTestGhl.innerHTML = `<span>Probar API</span>`;
+    if (!isSilent) {
+      dom.btnTestGhl.disabled = false;
+      dom.btnTestGhl.innerHTML = `<span>Probar API</span>`;
+    }
   }
+}
+
+function autoVerifyConnections() {
+  testKommoConnection({ silent: true });
+  testGhlConnection({ silent: true });
 }
 
 // ==========================================
@@ -575,8 +641,8 @@ function init() {
   });
 
   // Tests de Conexión
-  dom.btnTestKommo.addEventListener('click', testKommoConnection);
-  dom.btnTestGhl.addEventListener('click', testGhlConnection);
+  dom.btnTestKommo.addEventListener('click', () => testKommoConnection({ silent: false }));
+  dom.btnTestGhl.addEventListener('click', () => testGhlConnection({ silent: false }));
 
   // Copiar Webhook
   dom.btnCopyWebhook.addEventListener('click', () => {
@@ -636,6 +702,18 @@ function init() {
     dom.btnLogout.addEventListener('click', handleLogout);
   }
 
+  // Restaurar estados cacheados si existen para que no aparezca "Sin verificar"
+  const cachedKommo = localStorage.getItem('cached_kommo_account');
+  if (cachedKommo && dom.kommoStatusBadge) {
+    dom.kommoStatusBadge.className = 'conn-badge connected';
+    dom.kommoStatusBadge.textContent = `Conectado (${cachedKommo})`;
+  }
+  const cachedGhl = localStorage.getItem('cached_ghl_location');
+  if (cachedGhl && dom.ghlStatusBadge) {
+    dom.ghlStatusBadge.className = 'conn-badge connected';
+    dom.ghlStatusBadge.textContent = `Conectado (${cachedGhl})`;
+  }
+
   // Carga inicial y chequeo de autenticación
   checkAuth();
   loadConfig();
@@ -673,6 +751,7 @@ async function checkAuth() {
       if (data.authenticated) {
         hideLoginOverlay();
         if (dom.btnLogout) dom.btnLogout.style.display = 'inline-flex';
+        autoVerifyConnections();
       } else {
         window.showLoginOverlay();
         if (dom.btnLogout) dom.btnLogout.style.display = 'none';
@@ -680,6 +759,7 @@ async function checkAuth() {
     } else {
       hideLoginOverlay();
       if (dom.btnLogout) dom.btnLogout.style.display = 'none';
+      autoVerifyConnections();
     }
   } catch (e) {
     // Si falla la red, no bloquear
@@ -710,6 +790,7 @@ async function handleLogin(e) {
       loadConfig();
       loadHistory();
       loadPollingStatus();
+      autoVerifyConnections();
     } else {
       dom.loginErrorMsg.textContent = data.error || 'Contraseña incorrecta';
       dom.loginErrorMsg.style.display = 'block';
