@@ -1,6 +1,7 @@
 import * as kommoService from './kommo.js';
 import * as ghlService from './ghl.js';
 import { recordSyncEvent } from './history.js';
+import { getPhoneSearchVariants } from '../utils/phone.js';
 
 /**
  * Orquesta la sincronización entre Kommo CRM y GoHighLevel.
@@ -103,12 +104,50 @@ export async function syncKommoContactWithGHL({ contactId, leadId, directPhone, 
 
     // Si tenemos teléfonos pero aún no tenemos resolvedContactId, intentar buscar el contacto en Kommo
     if (!kommoContact && phonesToSearch.length > 0) {
+      const allSearchVariants = new Set();
       for (const p of phonesToSearch) {
-        const found = await kommoService.searchContacts(p);
+        allSearchVariants.add(p);
+        const variants = getPhoneSearchVariants(p);
+        variants.forEach(v => allSearchVariants.add(v));
+      }
+
+      for (const variant of allSearchVariants) {
+        const found = await kommoService.searchContacts(variant);
         if (found.length > 0) {
           kommoContact = found[0];
           resolvedContactId = kommoContact.id;
+          const extracted = kommoService.extractPhonesFromContact(kommoContact);
+          phonesToSearch.push(...extracted);
+          addStep('Contacto Localizado en Kommo por Búsqueda', 'success', `Contacto ID #${resolvedContactId} encontrado con búsqueda de "${variant}"`);
           break;
+        }
+      }
+
+      // Si aún no lo encuentra por searchContacts (a veces Kommo tarda en indexar leads nuevos de WhatsApp)
+      // Buscar en los contactos recientes de Kommo
+      if (!kommoContact) {
+        try {
+          const recent = await kommoService.getRecentContacts(25);
+          for (const rc of recent) {
+            const rcPhones = kommoService.extractPhonesFromContact(rc);
+            const hasMatch = rcPhones.some(p => {
+              const cleanP = p.replace(/\D/g, '');
+              return phonesToSearch.some(target => {
+                const cleanTarget = target.replace(/\D/g, '');
+                return cleanP.endsWith(cleanTarget) || cleanTarget.endsWith(cleanP);
+              });
+            });
+            if (hasMatch) {
+              kommoContact = rc;
+              resolvedContactId = rc.id;
+              const extracted = kommoService.extractPhonesFromContact(kommoContact);
+              phonesToSearch.push(...extracted);
+              addStep('Contacto Localizado en Kommo (Contactos Recientes)', 'success', `Contacto ID #${resolvedContactId} (${rc.name || 'Sin nombre'})`);
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn('[Sync] Fallo al buscar contactos recientes en Kommo:', err.message);
         }
       }
     }
